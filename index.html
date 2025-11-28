@@ -1,315 +1,141 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat real para Supabase</title>
-    <!-- Inclui a biblioteca Supabase via CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <title>Chat Ao Vivo</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
-        .container { max-width: 600px; margin: 50px auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
-        h1 { text-align: center; color: #333; }
-        .message-box { border: 1px solid #ccc; height: 300px; overflow-y: auto; padding: 10px; margin-bottom: 10px; background-color: #e9e9e9; border-radius: 4px; }
-        .message { margin-bottom: 8px; padding: 5px; border-radius: 4px; max-width: 80%; }
-        .message-sent { background-color: #d1e7dd; float: right; clear: both; }
-        .message-received { background-color: #f8d7da; float: left; clear: both; }
-        .message-user { font-weight: bold; margin-right: 10px; color: #0056b3; }
-        input[type="email"], input[type="password"], textarea { width: 100%; padding: 10px; margin: 5px 0 10px 0; display: inline-block; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        button { background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; width: 100%; margin-bottom: 10px; }
-        button:hover { background-color: #0056b3; }
-        .chat-input { display: flex; }
-        .chat-input input { flex-grow: 1; margin-right: 10px; }
-        .auth-section, .chat-section { display: none; padding: 10px; border: 1px solid #ddd; border-radius: 4px; margin-top: 15px; }
-        .auth-section.active, .chat-section.active { display: block; }
-        .tab-button { background-color: #f8f9fa; color: #007bff; border: 1px solid #007bff; padding: 8px 15px; cursor: pointer; border-radius: 4px 4px 0 0; margin-right: 5px; }
-        .tab-button.active { background-color: #007bff; color: white; }
-        .tab-content { border: 1px solid #ddd; border-top: none; padding: 20px; border-radius: 0 0 4px 4px; }
-        .error-message { color: red; margin-top: 10px; }
-        .status-message { color: green; margin-top: 10px; }
-        .logout-button { background-color: #dc3545; width: auto; float: right; padding: 5px 10px; }
-        .logout-button:hover { background-color: #c82333; }
+        body { font-family: sans-serif; padding: 20px; background-color: #f0f2f5; }
+        #chat-box { 
+            height: 60vh; background: white; border: 1px solid #ccc; 
+            border-radius: 8px; overflow-y: scroll; padding: 15px; 
+            margin-bottom: 15px; 
+        }
+        .msg { margin-bottom: 10px; padding: 8px; border-radius: 5px; background-color: #e9ecef; }
+        input { padding: 10px; border: 1px solid #ccc; width: 60%; }
+        button { padding: 10px; background-color: #24b47e; color: white; border: none; font-weight: bold; }
+        #aviso-erro { color: red; background: #ffe6e6; padding: 10px; display: none; border: 1px solid red; margin-bottom: 10px;}
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <div style="overflow: auto;">
-            <h1>Chat real para Supabase</h1>
-            <button id="logout-btn" class="logout-button" style="display: none;">Sair</button>
-        </div>
+    <h2 style="text-align: center;">💬 Chat Ao Vivo</h2>
+    
+    <div id="aviso-erro"></div>
+    <div id="chat-box">Carregando...</div>
 
-        <!-- SEÇÃO DE AUTENTICAÇÃO -->
-        <div id="auth-area" class="auth-section active">
-            <h2>Acesso</h2>
-
-            <div id="auth-tabs">
-                <button class="tab-button" onclick="showTab('login')">Login</button>
-                <button class="tab-button active" onclick="showTab('signup')">Cadastro</button>
-                <button class="tab-button" onclick="showTab('reset')">Redefinir Senha</button>
-            </div>
-
-            <!-- Formulário de Login -->
-            <div id="login" class="tab-content" style="display: none;">
-                <input type="email" id="login-email" placeholder="E-mail" required>
-                <input type="password" id="login-password" placeholder="Senha" required>
-                <button onclick="handleLogin()">Entrar</button>
-            </div>
-
-            <!-- Formulário de Cadastro (MODIFICADO com valores preenchidos) -->
-            <div id="signup" class="tab-content">
-                <input type="email" id="signup-email" placeholder="E-mail" required value="olnair11pereira@gmail.com">
-                <input type="password" id="signup-password" placeholder="Senha" required value=".........">
-                <button onclick="handleSignUp()">Cadastrar</button>
-                <p style="font-size: 12px; text-align: center;">Um e-mail de confirmação será enviado.</p>
-            </div>
-
-            <!-- Formulário de Redefinição de Senha -->
-            <div id="reset" class="tab-content" style="display: none;">
-                <input type="email" id="reset-email" placeholder="E-mail para redefinição" required>
-                <button onclick="handlePasswordReset()">Redefinir Senha</button>
-                <p style="font-size: 12px; text-align: center;">Um link de redefinição será enviado para este e-mail.</p>
-            </div>
-
-            <p id="auth-message" class="error-message"></p>
-        </div>
-
-        <!-- SEÇÃO DO CHAT -->
-        <div id="chat-area" class="chat-section">
-            <h2>Sala de Chat</h2>
-            <div id="message-box" class="message-box">
-                <!-- As mensagens aparecerão aqui -->
-            </div>
-            <div class="chat-input">
-                <input type="text" id="message-input" placeholder="Digite sua mensagem..." onkeydown="if(event.key === 'Enter') handleSendMessage()">
-                <button onclick="handleSendMessage()" style="width: 100px; margin: 0;">Enviar</button>
-            </div>
-        </div>
+    <div>
+        <input type="text" id="nome" placeholder="Seu Nome" style="width: 25%;">
+        <input type="text" id="msg" placeholder="Mensagem..." style="width: 45%;">
+        <button onclick="enviar()">Enviar</button>
     </div>
 
     <script>
-        // CHAVES DO SEU PROJETO SUPABASE
-        const SUPABASE_URL = 'https://zwszvrmbciryfveaddbh.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp3c3p2cm1iY2lyeWZ2ZWFkZGJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzMDE1MTEsImV4cCI6MjA3OTg3NzUxMX0.8LZ1bNRw7_hxKg714qzkTjoht3u51MMlgRrM6sd4BCs';
+        // --- CHAVES ATUALIZADAS (Novas Chaves Inseridas Aqui) ---
+        const parte1 = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhubWhnbHpidXJyY3R4Znh2aWRzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzMDM5NTgsImV4cCI6MjA3OTg3OTk1OH0.';
+        const parte2 = 'NLpwzO2aJfWjyBPe9Nap5OmBfd-a00F9EGrDbEKru_A';
+        
+        const supabaseUrl = 'https://xnmhglzburrctxfxvids.supabase.co';
+        const supabaseKey = parte1 + parte2; // Junta as partes aqui
 
-        // 1. Inicializa o cliente Supabase
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // Inicia o sistema
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+        const chatBox = document.getElementById('chat-box');
+        const avisoErro = document.getElementById('aviso-erro');
+        const btnEnviar = document.querySelector('button');
 
-        let userSession = null; // Armazenar a sessão do usuário
-
-        // ====================================================================
-        // FUNÇÕES DE AUTENTICAÇÃO
-        // ====================================================================
-
-        // Exibe mensagens de status/erro na área de autenticação
-        function displayAuthMessage(message, isError = true) {
-            const el = document.getElementById('auth-message');
-            el.textContent = message;
-            el.className = isError ? 'error-message' : 'status-message';
+        // Função de Erro
+        function mostrarErro(txt) {
+            avisoErro.style.display = 'block';
+            avisoErro.innerText = 'ERRO: ' + txt;
+            chatBox.innerHTML = '🔴 Parou.';
         }
 
-        // Troca entre as abas (Login, Cadastro, Redefinir Senha)
-        function showTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
-            document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
+        // 1. Carregar
+        async function carregar() {
+            try {
+                const { data, error } = await supabase
+                    .from('mensagens')
+                    .select('*')
+                    .order('id', {ascending: true});
+
+                if (error) throw error;
+
+                chatBox.innerHTML = ''; 
+                data.forEach(m => addMsg(m));
+                rolar();
+            } catch (err) {
+                mostrarErro(err.message);
+            }
+        }
+
+        // 2. Mostrar na tela (Melhoria: Prevenção de XSS e Performance do DOM)
+        function addMsg(msg) {
+            // Cria o elemento principal da mensagem
+            const msgDiv = document.createElement('div');
+            msgDiv.classList.add('msg');
+
+            // Cria o strong para o nome do usuário
+            const strong = document.createElement('strong');
+            // USA .textContent para segurança XSS no nome do usuário
+            strong.textContent = msg.usuario + ': '; 
             
-            // Corrige a lógica de mostrar o tab-content
-            const targetContent = document.getElementById(tabId);
-            if (targetContent) {
-                targetContent.style.display = 'block';
-            }
+            // Cria um nó de texto puro para o conteúdo da mensagem (Segurança XSS)
+            const textNode = document.createTextNode(msg.texto);
+
+            // Monta o div e adiciona ao chat
+            msgDiv.appendChild(strong);
+            msgDiv.appendChild(textNode);
             
-            // Corrige a lógica de ativar o botão
-            const targetButton = document.querySelector(`[onclick="showTab('${tabId}')"]`);
-            if (targetButton) {
-                targetButton.classList.add('active');
-            }
-            
-            displayAuthMessage('', false); // Limpa a mensagem ao trocar de aba
+            chatBox.appendChild(msgDiv); // Adiciona de forma eficiente (melhor que innerHTML +=)
+            rolar();
         }
 
-        // Manipulador de Login
-        async function handleLogin() {
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
-            displayAuthMessage('', false);
+        // 3. Enviar (Melhoria: .trim() para limpeza e controle de botão)
+        async function enviar() {
+            const usuario = document.getElementById('nome').value.trim(); // .trim() para limpar espaços
+            const texto = document.getElementById('msg').value.trim(); // .trim() para limpar espaços
 
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            if (!usuario || !texto) return alert("Preencha tudo!");
 
-            if (error) {
-                displayAuthMessage('Erro ao fazer login: ' + error.message, true);
-            } else {
-                displayAuthMessage('Login bem-sucedido!', false);
-            }
+            btnEnviar.disabled = true; // Desabilita o botão para evitar clique duplo
+            btnEnviar.innerText = 'Enviando...';
+
+            const { error } = await supabase
+                .from('mensagens')
+                .insert([{ usuario, texto }]);
+
+            btnEnviar.disabled = false; // Habilita o botão
+            btnEnviar.innerText = 'Enviar';
+
+            if (error) mostrarErro(error.message);
+            else document.getElementById('msg').value = '';
         }
 
-        // Manipulador de Cadastro
-        async function handleSignUp() {
-            const email = document.getElementById('signup-email').value;
-            const password = document.getElementById('signup-password').value;
-            displayAuthMessage('', false);
-
-            const { data, error } = await supabase.auth.signUp({ email, password });
-
-            if (error) {
-                displayAuthMessage('Erro ao cadastrar: ' + error.message, true);
-            } else if (data.user) {
-                displayAuthMessage('Cadastro realizado! Verifique seu e-mail para confirmar a conta.', false);
-            }
-        }
-
-        // Manipulador de Redefinição de Senha
-        async function handlePasswordReset() {
-            const email = document.getElementById('reset-email').value;
-            displayAuthMessage('', false);
-
-            const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: `${window.location.origin}/update-password` // Defina sua URL de redefinição
+        // Rola para o fim (Melhoria: Opcional, pode usar 'smooth' para rolagem mais suave)
+        function rolar() { 
+            chatBox.scrollTo({ 
+                top: chatBox.scrollHeight, 
+                behavior: 'smooth' 
             });
-
-            if (error) {
-                displayAuthMessage('Erro ao solicitar redefinição: ' + error.message, true);
-            } else {
-                displayAuthMessage('E-mail de redefinição enviado! Verifique sua caixa de entrada.', false);
-            }
         }
 
-        // Manipulador de Logout
-        async function handleLogout() {
-            const { error } = await supabase.auth.signOut();
-            if (error) {
-                console.error('Erro ao sair:', error.message);
-            }
-        }
-        
-        document.getElementById('logout-btn').addEventListener('click', handleLogout);
+        // 4. Tempo Real
+        supabase.channel('custom-all-channel')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mensagens' }, (payload) => {
+                addMsg(payload.new);
+            })
+            .subscribe();
 
-        // ====================================================================
-        // FUNÇÕES DO CHAT
-        // ====================================================================
-
-        // Carrega as mensagens existentes ao entrar no chat
-        async function loadMessages() {
-            const { data, error } = await supabase
-                .from('messages')
-                .select(`id, content, created_at, user_id, user_email:profiles(email)`) // Assumindo uma tabela 'profiles' para buscar o email, ou user_id diretamente. Aqui usamos uma query mais simples para demonstração.
-                .order('created_at', { ascending: true })
-                .limit(50);
-
-            if (error) {
-                console.error('Erro ao carregar mensagens:', error.message);
-                return;
-            }
-
-            const messageBox = document.getElementById('message-box');
-            messageBox.innerHTML = ''; // Limpa antes de carregar
-            data.forEach(msg => addMessageToDOM(msg, true));
-        }
-        
-        // Adiciona uma mensagem ao DOM do chat
-        function addMessageToDOM(message, isInitialLoad = false) {
-            const messageBox = document.getElementById('message-box');
-            const newMessage = document.createElement('div');
-            newMessage.className = 'message';
-            
-            // Simula o nome do usuário/email. Na prática, você usaria uma tabela 'profiles'.
-            const senderId = message.user_id || 'Desconhecido'; 
-            const senderEmail = message.user_email || senderId.substring(0, 8) + '...';
-            
-            // Verifica se a mensagem foi enviada pelo usuário logado
-            const isSentByUser = userSession && userSession.user.id === senderId;
-
-            newMessage.classList.add(isSentByUser ? 'message-sent' : 'message-received');
-            
-            const time = new Date(message.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
-            newMessage.innerHTML = `
-                <span class="message-user">${isSentByUser ? 'Você' : senderEmail}</span>
-                <span>${message.content}</span>
-                <span style="font-size: 10px; color: #666; float: right; margin-left: 10px;">${time}</span>
-            `;
-            
-            messageBox.appendChild(newMessage);
-
-            // Rola para a última mensagem
-            if (!isInitialLoad) {
-                messageBox.scrollTop = messageBox.scrollHeight;
-            }
-        }
-        
-        // Envia uma nova mensagem
-        async function handleSendMessage() {
-            const input = document.getElementById('message-input');
-            const content = input.value.trim();
-
-            if (!content || !userSession) return;
-
-            // Insere a mensagem na tabela 'messages'
-            const { data, error } = await supabase
-                .from('messages')
-                .insert([
-                    { content: content, user_id: userSession.user.id }
-                ]);
-            
-            if (error) {
-                console.error('Erro ao enviar mensagem:', error.message);
-            } else {
-                input.value = ''; // Limpa o input
-            }
-        }
-
-        // Configura a escuta em tempo real para novas mensagens
-        function setupRealtimeListener() {
-            // Este canal escuta por INSERÇÕES na tabela 'messages'
-            supabase
-                .channel('room-1')
-                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
-                    // O payload.new é o novo registro inserido
-                    const newMessage = {
-                        id: payload.new.id,
-                        content: payload.new.content,
-                        created_at: payload.new.created_at,
-                        user_id: payload.new.user_id,
-                        user_email: userSession.user.email // Usa o email do usuário logado para simplificar a exibição
-                    };
-                    addMessageToDOM(newMessage);
-                })
-                .subscribe();
-        }
-
-        // ====================================================================
-        // GERENCIAMENTO DE SESSÃO
-        // ====================================================================
-
-        // Escuta por mudanças no estado de autenticação (login/logout)
-        supabase.auth.onAuthStateChange((event, session) => {
-            userSession = session;
-            const authArea = document.getElementById('auth-area');
-            const chatArea = document.getElementById('chat-area');
-            const logoutBtn = document.getElementById('logout-btn');
-
-            if (session) {
-                // Usuário logado
-                authArea.classList.remove('active');
-                chatArea.classList.add('active');
-                logoutBtn.style.display = 'inline-block';
-                loadMessages(); // Carrega mensagens
-                setupRealtimeListener(); // Inicia a escuta em tempo real
-                displayAuthMessage('', false);
-            } else {
-                // Usuário deslogado
-                authArea.classList.add('active');
-                chatArea.classList.remove('active');
-                logoutBtn.style.display = 'none';
-                
-                // Limpa o chat
-                document.getElementById('message-box').innerHTML = 'Faça login para começar a conversar.';
+        // 5. UX: Enviar com a tecla Enter
+        document.getElementById('msg').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                enviar();
             }
         });
 
-        // Inicializa para exibir a aba de cadastro por padrão, conforme a imagem
-        showTab('signup');
+        carregar();
     </script>
-
 </body>
-    </html>
+</html>
