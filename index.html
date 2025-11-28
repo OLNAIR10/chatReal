@@ -1,0 +1,117 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Simples Supabase</title>
+    <!-- Importando a biblioteca do Supabase -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f4f4f9; }
+        h2 { text-align: center; color: #333; }
+        #chat-box { 
+            background: white; border: 1px solid #ddd; height: 400px; 
+            overflow-y: scroll; padding: 15px; margin-bottom: 15px; 
+            border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .mensagem { margin-bottom: 8px; padding: 8px 12px; background: #e9ecef; border-radius: 15px; width: fit-content; max-width: 80%; }
+        .minha-msg { background: #dcf8c6; margin-left: auto; } /* Estilo estilo Zap */
+        
+        .controles { display: flex; gap: 10px; }
+        input { padding: 12px; border: 1px solid #ddd; border-radius: 5px; outline: none; }
+        #input-user { width: 25%; }
+        #input-msg { flex-grow: 1; }
+        button { 
+            padding: 12px 20px; cursor: pointer; background-color: #24b47e; 
+            color: white; border: none; border-radius: 5px; font-weight: bold; 
+            transition: background 0.2s;
+        }
+        button:hover { background-color: #1a8f63; }
+    </style>
+</head>
+<body>
+
+    <h2>💬 Chat da Galera</h2>
+    
+    <div id="chat-box">
+        <p style="color: gray; text-align: center;">Carregando mensagens...</p>
+    </div>
+
+    <div class="controles">
+        <input type="text" id="input-user" placeholder="Seu Nome">
+        <input type="text" id="input-msg" placeholder="Digite sua mensagem...">
+        <button onclick="enviarMensagem()">Enviar 🚀</button>
+    </div>
+
+    <script>
+        // --- SUAS CHAVES JÁ CONFIGURADAS AQUI ---
+        const supabaseUrl = 'https://zwszvrmbciryfveaddbh.supabase.co'
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp3c3p2cm1iY2lyeWZ2ZWFkZGJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzMDE1MTEsImV4cCI6MjA3OTg3NzUxMX0.8LZ1bNRw7_hxKg714qzkTjoht3u51MMlgRrM6sd4BCs'
+        
+        // Inicia o Supabase
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey)
+        const chatBox = document.getElementById('chat-box')
+
+        // 1. Carregar mensagens antigas ao abrir
+        async function carregarMensagens() {
+            const { data, error } = await supabase
+                .from('mensagens')
+                .select('*')
+                .order('created_at', { ascending: true })
+            
+            chatBox.innerHTML = '' // Limpa o "Carregando..."
+            
+            if(error) {
+                console.error("Erro ao carregar:", error)
+                chatBox.innerHTML = '<p style="color:red">Erro: Você criou a tabela no Supabase?</p>'
+                return
+            }
+
+            if(data) {
+                data.forEach(msg => exibirMensagem(msg))
+            }
+        }
+
+        // 2. Mostrar mensagem na tela
+        function exibirMensagem(msg) {
+            const div = document.createElement('div')
+            div.className = 'mensagem'
+            div.innerHTML = `<strong>${msg.usuario}:</strong> ${msg.texto}`
+            chatBox.appendChild(div)
+            // Rola para o final automaticamente
+            chatBox.scrollTop = chatBox.scrollHeight 
+        }
+
+        // 3. Enviar mensagem para o banco de dados
+        async function enviarMensagem() {
+            const usuario = document.getElementById('input-user').value
+            const texto = document.getElementById('input-msg').value
+
+            if (!usuario || !texto) return alert("Ei, preencha seu nome e a mensagem!")
+
+            const { error } = await supabase
+                .from('mensagens')
+                .insert([{ usuario: usuario, texto: texto }])
+            
+            if (error) alert("Erro ao enviar: " + error.message)
+            else document.getElementById('input-msg').value = '' // Limpa campo de texto
+        }
+
+        // Permite enviar com a tecla ENTER
+        document.getElementById('input-msg').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') enviarMensagem();
+        });
+
+        // 4. SISTEMA EM TEMPO REAL (A mágica acontece aqui)
+        supabase.channel('mensagens')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mensagens' }, payload => {
+                // Quando alguém insere algo no banco, aparece aqui na hora
+                exibirMensagem(payload.new)
+            })
+            .subscribe()
+
+        // Inicia tudo
+        carregarMensagens()
+    </script>
+</body>
+</html>
