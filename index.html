@@ -44,22 +44,22 @@
             <h2>Acesso</h2>
 
             <div id="auth-tabs">
-                <button class="tab-button active" onclick="showTab('login')">Login</button>
-                <button class="tab-button" onclick="showTab('signup')">Cadastro</button>
+                <button class="tab-button" onclick="showTab('login')">Login</button>
+                <button class="tab-button active" onclick="showTab('signup')">Cadastro</button>
                 <button class="tab-button" onclick="showTab('reset')">Redefinir Senha</button>
             </div>
 
             <!-- Formulário de Login -->
-            <div id="login" class="tab-content">
+            <div id="login" class="tab-content" style="display: none;">
                 <input type="email" id="login-email" placeholder="E-mail" required>
                 <input type="password" id="login-password" placeholder="Senha" required>
                 <button onclick="handleLogin()">Entrar</button>
             </div>
 
-            <!-- Formulário de Cadastro -->
-            <div id="signup" class="tab-content" style="display: none;">
-                <input type="email" id="signup-email" placeholder="E-mail" required>
-                <input type="password" id="signup-password" placeholder="Senha" required>
+            <!-- Formulário de Cadastro (MODIFICADO com valores preenchidos) -->
+            <div id="signup" class="tab-content">
+                <input type="email" id="signup-email" placeholder="E-mail" required value="olnair11pereira@gmail.com">
+                <input type="password" id="signup-password" placeholder="Senha" required value=".........">
                 <button onclick="handleSignUp()">Cadastrar</button>
                 <p style="font-size: 12px; text-align: center;">Um e-mail de confirmação será enviado.</p>
             </div>
@@ -113,8 +113,18 @@
             document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
             document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
             
-            document.getElementById(tabId).style.display = 'block';
-            document.querySelector(`[onclick="showTab('${tabId}')"]`).classList.add('active');
+            // Corrige a lógica de mostrar o tab-content
+            const targetContent = document.getElementById(tabId);
+            if (targetContent) {
+                targetContent.style.display = 'block';
+            }
+            
+            // Corrige a lógica de ativar o botão
+            const targetButton = document.querySelector(`[onclick="showTab('${tabId}')"]`);
+            if (targetButton) {
+                targetButton.classList.add('active');
+            }
+            
             displayAuthMessage('', false); // Limpa a mensagem ao trocar de aba
         }
 
@@ -297,8 +307,8 @@
             }
         });
 
-        // Inicializa para exibir a aba de login por padrão
-        showTab('login');
+        // Inicializa para exibir a aba de cadastro por padrão, conforme a imagem
+        showTab('signup');
     </script>
 
 </body>
