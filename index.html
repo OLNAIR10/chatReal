@@ -3,130 +3,104 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat da Galera</title>
+    <title>Chat Ao Vivo</title>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: Helvetica, Arial, sans-serif; padding: 20px; background-color: #f0f2f5; }
+        body { font-family: sans-serif; padding: 20px; background-color: #f0f2f5; }
         #chat-box { 
-            height: 60vh; 
-            background: white; 
-            border: 1px solid #ccc; 
-            border-radius: 8px;
-            overflow-y: scroll; 
-            padding: 15px; 
+            height: 60vh; background: white; border: 1px solid #ccc; 
+            border-radius: 8px; overflow-y: scroll; padding: 15px; 
             margin-bottom: 15px; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         .msg { margin-bottom: 10px; padding: 8px; border-radius: 5px; background-color: #e9ecef; }
-        .msg strong { color: #2c3e50; }
-        
-        .controles { display: flex; gap: 5px; }
-        input { padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
-        #nome { width: 30%; }
-        #msg { flex-grow: 1; }
-        button { padding: 10px 20px; background-color: #24b47e; color: white; border: none; border-radius: 4px; font-weight: bold; }
-        
-        /* Caixa de erro para diagnóstico */
-        #aviso-erro { color: red; background: #ffe6e6; padding: 10px; display: none; margin-bottom: 10px; border: 1px solid red; }
+        input { padding: 10px; border: 1px solid #ccc; width: 60%; }
+        button { padding: 10px; background-color: #24b47e; color: white; border: none; font-weight: bold; }
+        #aviso-erro { color: red; background: #ffe6e6; padding: 10px; display: none; border: 1px solid red; margin-bottom: 10px;}
     </style>
 </head>
 <body>
 
     <h2 style="text-align: center;">💬 Chat Ao Vivo</h2>
     
-    <!-- Se der erro, vai aparecer aqui -->
     <div id="aviso-erro"></div>
+    <div id="chat-box">Carregando...</div>
 
-    <div id="chat-box">Carregando histórico...</div>
-
-    <div class="controles">
-        <input type="text" id="nome" placeholder="Seu apelido">
-        <input type="text" id="msg" placeholder="Digite algo...">
+    <div>
+        <input type="text" id="nome" placeholder="Seu Nome" style="width: 25%;">
+        <input type="text" id="msg" placeholder="Mensagem..." style="width: 45%;">
         <button onclick="enviar()">Enviar</button>
     </div>
 
     <script>
-        // --- SUAS CHAVES DO SUPABASE ---
+        // --- TRUQUE PARA NÃO QUEBRAR NO CELULAR ---
+        // Dividi a chave em 2 partes para não dar erro de quebra de linha
+        const parte1 = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp3c3p2cm1iY2lyeWZ2ZWFkZGJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzMDE1MTEsImV4cCI6MjA3OTg3NzUxMX0.';
+        const parte2 = '8LZ1bNRw7_hxKg714qzkTjoht3u51MMlgRrM6sd4BCs';
+        
         const supabaseUrl = 'https://zwszvrmbciryfveaddbh.supabase.co';
-        // ATENÇÃO: Esta chave deve ficar TUDO NA MESMA LINHA:
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp3c3p2cm1iY2lyeWZ2ZWFkZGJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzMDE1MTEsImV4cCI6MjA3OTg3NzUxMX0.8LZ1bNRw7_hxKg714qzkTjoht3u51MMlgRrM6sd4BCs';
+        const supabaseKey = parte1 + parte2; // Junta as partes aqui
 
-        // Inicia o cliente
+        // Inicia o sistema
         const supabase = supabase.createClient(supabaseUrl, supabaseKey);
         const chatBox = document.getElementById('chat-box');
         const avisoErro = document.getElementById('aviso-erro');
 
-        // Função para mostrar erro na tela (ajuda a descobrir o problema)
-        function mostrarErro(texto) {
+        // Função de Erro
+        function mostrarErro(txt) {
             avisoErro.style.display = 'block';
-            avisoErro.innerText = 'ERRO: ' + texto;
-            chatBox.innerHTML = '🔴 O sistema parou.';
+            avisoErro.innerText = 'ERRO: ' + txt;
+            chatBox.innerHTML = '🔴 Parou.';
         }
 
-        // 1. Carregar mensagens
+        // 1. Carregar
         async function carregar() {
-            const { data, error } = await supabase
-                .from('mensagens')
-                .select('*')
-                .order('id', {ascending: true}); // Ordena por ID ou created_at
+            try {
+                const { data, error } = await supabase
+                    .from('mensagens')
+                    .select('*')
+                    .order('id', {ascending: true});
 
-            if (error) {
-                mostrarErro(error.message);
-            } else {
-                chatBox.innerHTML = ''; // Limpa o "Carregando..."
-                data.forEach(m => adicionarNaTela(m));
-                rolarParaBaixo();
+                if (error) throw error;
+
+                chatBox.innerHTML = ''; 
+                data.forEach(m => addMsg(m));
+                rolar();
+            } catch (err) {
+                mostrarErro(err.message);
             }
         }
 
-        // 2. Adicionar mensagem visualmente
-        function adicionarNaTela(mensagem) {
-            const div = document.createElement('div');
-            div.className = 'msg';
-            div.innerHTML = `<strong>${mensagem.usuario}:</strong> ${mensagem.texto}`;
-            chatBox.appendChild(div);
-            rolarParaBaixo();
+        // 2. Mostrar na tela
+        function addMsg(msg) {
+            chatBox.innerHTML += `<div class="msg"><strong>${msg.usuario}:</strong> ${msg.texto}</div>`;
+            rolar();
         }
 
-        // 3. Enviar mensagem
+        // 3. Enviar
         async function enviar() {
-            const nomeInput = document.getElementById('nome');
-            const msgInput = document.getElementById('msg');
-            
-            const usuario = nomeInput.value;
-            const texto = msgInput.value;
+            const usuario = document.getElementById('nome').value;
+            const texto = document.getElementById('msg').value;
 
-            if (!usuario || !texto) return alert("Preencha nome e mensagem!");
+            if (!usuario || !texto) return alert("Preencha tudo!");
 
             const { error } = await supabase
                 .from('mensagens')
-                .insert([{ usuario: usuario, texto: texto }]);
+                .insert([{ usuario, texto }]);
 
-            if (error) {
-                mostrarErro("Falha ao enviar: " + error.message);
-            } else {
-                msgInput.value = ''; // Limpa o campo
-            }
+            if (error) mostrarErro(error.message);
+            else document.getElementById('msg').value = '';
         }
 
-        function rolarParaBaixo() {
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }
+        function rolar() { chatBox.scrollTop = chatBox.scrollHeight; }
 
-        // 4. Tempo Real (Ouvir novas mensagens)
-        supabase.channel('canal-publico')
-            .on(
-                'postgres_changes', 
-                { event: 'INSERT', schema: 'public', table: 'mensagens' }, 
-                (payload) => {
-                    adicionarNaTela(payload.new);
-                }
-            )
+        // 4. Tempo Real
+        supabase.channel('custom-all-channel')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mensagens' }, (payload) => {
+                addMsg(payload.new);
+            })
             .subscribe();
 
-        // Inicia o carregamento
         carregar();
-
     </script>
 </body>
 </html>
